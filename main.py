@@ -1,5 +1,6 @@
 from flask import Flask, request
-from flask_restful import Api, Resource, reqparse,abort
+from flask_restful import Api, Resource, reqparse,abort,fields,marshal_with
+#marshal_with is a decroater
 from flask_sqlalchemy import SQLAlchemy, Model
 
 
@@ -28,29 +29,63 @@ video_put_args.add_argument("name", type = str, help = "Name of the Video",requi
 video_put_args.add_argument("views", type = int, help = "Views of the Video",required = True)
 video_put_args.add_argument("likes", type = int, help = "Likes of the Video",required = True)
 # these three are the types of arguements needed for a argument parser
-videos = {}
 
-def abort_if_video_id_dosent_exist(video_id):
-    if video_id not in videos:
-        abort(404,message = "video id is not valid") # abort - sends error message back
-def abort_if_video_exists(video_id):
-    if video_id in videos:
-        abort(409,message = "Video already exists with that ID...")
+video_update_args = reqparse.RequestParser()
+video_update_args.add_argument("name", type = str, help = "Name of the Video")
+video_update_args.add_argument("name", type = int, help = "Views of the Video")
+video_update_args.add_argument("name", type = int, help = "Likes of the Video")
+# resource fields defines how objects should be serialized
+resource_fields = {
+    'id': fields.Integer, 
+    'name': fields.String,
+    'views': fields.Integer,
+    'likes': fields.Integer
+# a dictionary that defines the fields from the video model
+}
+
+
 class Video(Resource):
+    @marshal_with(resource_fields) #creates {'id': id },# serializer
     def get(self,video_id):
-        abort_if_video_id_dosent_exist(video_id)
-        return videos[video_id]
+        result = VideoModel.query.filter_by(id = video_id).first() # an instance of object video model
+        if not result:
+            abort(404,message = "Could not find video with that id")
+        return result
 
+    @marshal_with(resource_fields)
     def put(self,video_id):
-        abort_if_video_exists(video_id)
         args = video_put_args.parse_args()
-        videos[video_id] = args
-        return videos[video_id], 201 # returns a specific status code 201 - created
+        result = VideoModel.query.filter_by(id = video_id).first()
+        if result:
+            abort(409,message = "Video id taken already...")
+        video = VideoModel(id = video_id, name = args['name'],views = args['views'],likes = args['likes'])
+        db.session.add(video)
+        db.session.commit()
+        return video, 201 # returns a specific status code 201 - created
 
+    @marshal_with(resource_fields)
     def delete(self,video_id):
         abort_if_video_id_dosent_exist(video_id)
         del videos[video_id]
         return '', 204
+
+    @marshal_with(resource_fields)
+    def patch(self,video_id): # a way to update
+        args = video_put_args.parse_args()
+        result = VideoModel.query.filter_by(id = video_id).first()
+        if not result:
+            abort(404,message = "Video dosent exist, cannot update")
+        if  args['name']:
+            result.name = args['name']
+        if  args['views']:
+            result.views = args['views']
+        if  args['likes']:
+            result.likes = args['likes']
+
+        db.session.commit()
+
+        return result
+       
 
 #making a new instance of the model
 

@@ -14,5 +14,10 @@ for i in range(len(data)):
 response = requests.delete(BASE + "video/0")
 print(response)
 input()
-response = requests.get(BASE + "video/2")
+response = requests.get(BASE + "video/6")
+print(response.json())
+response = requests.patch(BASE + "video/2",{"views":99,"likes":101})
+print(response.json())
+
+response = requests.patch(BASE + "video/2",{"views":100,"likes":101})
 print(response.json())
